@@ -66,6 +66,7 @@ class Dataset:
             raise ValueError("Unknown dataset.")
 
         if not os.path.exists(self.root_path):
+            print(self.root_path)
             raise ValueError("Please follow the README to setup the datasets.")
 
         self.name = f"{self.dataset_name}_{self.set}"

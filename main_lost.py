@@ -32,6 +32,18 @@ if __name__ == "__main__":
         help="Model architecture.",
     )
     parser.add_argument(
+        "--custom_weights",
+        default="",
+        type=str,
+        help="Path to custom weights to use. If \"\" the default will be used."
+    )
+    parser.add_argument(
+        "--custom_name",
+        default="",
+        type=str,
+        help="Name used for the experiment with custom weights."
+    )
+    parser.add_argument(
         "--patch_size", default=16, type=int, help="Patch resolution of the model."
     )
 
@@ -118,7 +130,7 @@ if __name__ == "__main__":
     # -------------------------------------------------------------------------------------------------------
     # Model
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    model = get_model(args.arch, args.patch_size, args.resnet_dilate, device)
+    model = get_model(args.arch, args.patch_size, args.resnet_dilate, device, args.custom_weights)
 
     # -------------------------------------------------------------------------------------------------------
     # Directories
@@ -140,6 +152,8 @@ if __name__ == "__main__":
         elif "vit" in args.arch:
             exp_name += f"{args.patch_size}_{args.which_features}"
 
+    if args.custom_name != "" and args.custom_weights!="":
+        exp_name = "LOST-"+args.custom_name
     print(f"Running LOST on the dataset {dataset.name} (exp: {exp_name})")
 
     # Visualization 

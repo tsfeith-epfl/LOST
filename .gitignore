@@ -1,2 +1,5 @@
 outputs/*
 *.pyc
+datasets/*
+dino/*
+detectron2/*
