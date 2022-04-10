@@ -40,10 +40,11 @@ def get_model(arch, patch_size, resnet_dilate, device, custom_weights):
     if "imagenet" not in arch:
         if custom_weights != "":
             strict_loading = False if "resnet" in arch else True
-            model = torch.load(custom_weights)
+            state_dict = torch.load(custom_weights, map_location="cpu")
+            msg = model.load_state_dict(state_dict, strict=strict_loading)
             print(
-                "Pretrained weights found at {}".format(
-                    custom_weights
+                "Pretrained weights found at {} and loaded with message {}".format(
+                    custom_weights, msg
                 )
             )
         else:

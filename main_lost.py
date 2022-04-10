@@ -47,7 +47,7 @@ if __name__ == "__main__":
         "--patch_size", default=16, type=int, help="Patch resolution of the model."
     )
 
-    # Use a dataset
+    # Usen02077923 a dataset
     parser.add_argument(
         "--dataset",
         default="VOC07",
@@ -69,7 +69,6 @@ if __name__ == "__main__":
         default=None,
         help="If want to apply only on one image, give file path.",
     )
-
     # Folder used to output visualizations and 
     parser.add_argument(
         "--output_dir", type=str, default="outputs", help="Output directory to store predictions and visualizations."
