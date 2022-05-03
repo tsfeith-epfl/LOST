@@ -5,6 +5,50 @@ import scipy.ndimage
 import numpy as np
 from datasets import bbox_iou
 
+def fix_img_size(img, mode, patch_size, torch_shape):
+    if torch_shape:
+        if mode == 'pad_zero':
+            size_im = (
+                img.shape[0],
+                int(np.ceil(img.shape[1] / patch_size) * patch_size),
+                int(np.ceil(img.shape[2] / patch_size) * patch_size),
+            )
+            padded = np.zeros(size_im)
+            padded[:, : img.shape[1], : img.shape[2]] = img
+            img = padded
+        elif mode == 'crop_topleft':
+            w, h = img.shape[1] - img.shape[1] % patch_size, img.shape[2] - img.shape[2] % patch_size
+            img = img[:, :w, :h]
+        elif mode == 'crop_center':
+            w, h = img.shape[1] - img.shape[1] % patch_size, img.shape[2] - img.shape[2] % patch_size
+            dw, dh = img.shape[1] - w, img.shape[2] - h
+            img = img[:, int(dw/2):int(w+dw/2), int(dh/2):int(h+dh/2)]
+        elif mode == 'pad_mirror':
+            pad_w, pad_h = patch_size - img.shape[1] % patch_size, patch_size - img.shape[2] % patch_size
+            img = np.pad(img, ((0,0), (math.floor(pad_w/2), math.ceil(pad_w/2)), (math.floor(pad_h/2), math.ceil(pad_h/2))), 'symmetric')
+
+    else:
+        if mode == 'pad_zero':
+            size_im = (
+                int(np.ceil(img.shape[0] / patch_size) * patch_size),
+                int(np.ceil(img.shape[1] / patch_size) * patch_size),
+                img.shape[2]
+            )
+            padded = np.zeros(size_im)
+            padded[: img.shape[0], : img.shape[1], :] = img
+            img = padded
+        elif mode == 'crop_topleft':
+            w, h = img.shape[0] - img.shape[0] % patch_size, img.shape[1] - img.shape[1] % patch_size
+            img = img[:w, :h, :]
+        elif mode == 'crop_center':
+            w, h = img.shape[0] - img.shape[0] % patch_size, img.shape[1] - img.shape[1] % patch_size
+            dw, dh = img.shape[0] - w, img.shape[1] - h
+            img = img[int(dw/2):int(w+dw/2), int(dh/2):int(h+dh/2), :]
+        elif mode == 'pad_mirror':
+            pad_w, pad_h = patch_size - img.shape[0] % patch_size, patch_size - img.shape[1] % patch_size
+            img = np.pad(img, ((math.floor(pad_w/2), math.ceil(pad_w/2)), (math.floor(pad_h/2), math.ceil(pad_h/2)), (0,0)), 'symmetric')
+            
+    return img
 
 def lost(feats, dims, scales, init_image_size, k_patches=100):
     """

@@ -12,8 +12,8 @@ from PIL import Image
 
 from networks import get_model
 from datasets import ImageDataset, Dataset, bbox_iou
-from visualizations import visualize_fms, visualize_predictions, visualize_seed_expansion
-from object_discovery import lost, detect_box, dino_seg
+from visualizations import visualize_fms, visualize_predictions, visualize_seed_expansion, visualize_mask, visualize_bbox
+from object_discovery import lost, detect_box, dino_seg, fix_img_size
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Unsupervised object discovery with LOST.")
@@ -32,27 +32,21 @@ if __name__ == "__main__":
         help="Model architecture.",
     )
     parser.add_argument(
-        "--custom_weights",
-        default="",
-        type=str,
-        help="Path to custom weights to use. If \"\" the default will be used."
-    )
-    parser.add_argument(
-        "--custom_name",
-        default="",
-        type=str,
-        help="Name used for the experiment with custom weights."
-    )
-    parser.add_argument(
         "--patch_size", default=16, type=int, help="Patch resolution of the model."
     )
 
-    # Usen02077923 a dataset
+    # Use a dataset
     parser.add_argument(
         "--dataset",
         default="VOC07",
         type=str,
         choices=[None, "VOC07", "VOC12", "COCO20k"],
+        help="Dataset name.",
+    )
+    parser.add_argument(
+        "--dataset_path",
+        default="/home/lts5/Desktop/SemProj/datasets/VOC07",
+        type=str,
         help="Dataset name.",
     )
     parser.add_argument(
@@ -69,6 +63,7 @@ if __name__ == "__main__":
         default=None,
         help="If want to apply only on one image, give file path.",
     )
+
     # Folder used to output visualizations and 
     parser.add_argument(
         "--output_dir", type=str, default="outputs", help="Output directory to store predictions and visualizations."
@@ -83,7 +78,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--visualize",
         type=str,
-        choices=["fms", "seed_expansion", "pred", None],
+        choices=["fms", "seed_expansion", "pred", "custom", None],
         default=None,
         help="Select the different type of visualizations.",
     )
@@ -121,15 +116,20 @@ if __name__ == "__main__":
     # Dataset
 
     # If an image_path is given, apply the method only to the image
+    # if args.image_path is not None:
+    #     dataset = ImageDataset(args.image_path)
+    # else:
+    #     dataset = Dataset(args.dataset, args.set, args.no_hard)
+        
     if args.image_path is not None:
         dataset = ImageDataset(args.image_path)
     else:
-        dataset = Dataset(args.dataset, args.set, args.no_hard)
+        dataset = Dataset(args.dataset_path, args.no_hard)
 
     # -------------------------------------------------------------------------------------------------------
     # Model
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    model = get_model(args.arch, args.patch_size, args.resnet_dilate, device, args.custom_weights)
+    model = get_model(args.arch, args.patch_size, args.resnet_dilate, device)
 
     # -------------------------------------------------------------------------------------------------------
     # Directories
@@ -151,8 +151,6 @@ if __name__ == "__main__":
         elif "vit" in args.arch:
             exp_name += f"{args.patch_size}_{args.which_features}"
 
-    if args.custom_name != "" and args.custom_weights!="":
-        exp_name = "LOST-"+args.custom_name
     print(f"Running LOST on the dataset {dataset.name} (exp: {exp_name})")
 
     # Visualization 
@@ -310,6 +308,11 @@ if __name__ == "__main__":
             elif args.visualize == "pred":
                 image = dataset.load_image(im_name)
                 visualize_predictions(image, pred, seed, scales, [w_featmap, h_featmap], vis_folder, im_name)
+                
+            elif args.visualize == 'custom':
+                image = dataset.load_image(im_name)
+                image = fix_img_size(image, 'pad_zero', args.patch_size, False)
+                visualize_bbox(image, pred, gt_bbxs, vis_folder, im_name)
 
         # Save the prediction
         preds_dict[im_name] = pred
@@ -327,6 +330,9 @@ if __name__ == "__main__":
         cnt += 1
         if cnt % 50 == 0:
             pbar.set_description(f"Found {int(np.sum(corloc))}/{cnt}")
+        
+        if im_id == 20:
+            break
 
 
     # Save predicted bounding boxes

@@ -6,7 +6,7 @@ from torchvision.models.vgg import vgg16
 
 import dino.vision_transformer as vits
 
-def get_model(arch, patch_size, resnet_dilate, device, custom_weights):
+def get_model(arch, patch_size, resnet_dilate, device):
     if "resnet" in arch:
         if resnet_dilate == 1:
             replace_stride_with_dilation = [False, False, False]
@@ -38,45 +38,35 @@ def get_model(arch, patch_size, resnet_dilate, device, custom_weights):
 
     # Initialize model with pretraining
     if "imagenet" not in arch:
-        if custom_weights != "":
+        url = None
+        if arch == "vit_small" and patch_size == 16:
+            url = "dino_deitsmall16_pretrain/dino_deitsmall16_pretrain.pth"
+        elif arch == "vit_small" and patch_size == 8:
+            url = "dino_deitsmall8_300ep_pretrain/dino_deitsmall8_300ep_pretrain.pth"  # model used for visualizations in our paper
+        elif arch == "vit_base" and patch_size == 16:
+            url = "dino_vitbase16_pretrain/dino_vitbase16_pretrain.pth"
+        elif arch == "vit_base" and patch_size == 8:
+            url = "dino_vitbase8_pretrain/dino_vitbase8_pretrain.pth"
+        elif arch == "resnet50":
+            url = "dino_resnet50_pretrain/dino_resnet50_pretrain.pth"
+        if url is not None:
+            print(
+                "Since no pretrained weights have been provided, we load the reference pretrained DINO weights."
+            )
+            state_dict = torch.hub.load_state_dict_from_url(
+                url="https://dl.fbaipublicfiles.com/dino/" + url
+            )
             strict_loading = False if "resnet" in arch else True
-            state_dict = torch.load(custom_weights, map_location="cpu")
             msg = model.load_state_dict(state_dict, strict=strict_loading)
             print(
-                "Pretrained weights found at {} and loaded with message {}".format(
-                    custom_weights, msg
+                "Pretrained weights found at {} and loaded with msg: {}".format(
+                    url, msg
                 )
             )
         else:
-            url = None
-            if arch == "vit_small" and patch_size == 16:
-                url = "dino_deitsmall16_pretrain/dino_deitsmall16_pretrain.pth"
-            elif arch == "vit_small" and patch_size == 8:
-                url = "dino_deitsmall8_300ep_pretrain/dino_deitsmall8_300ep_pretrain.pth"  # model used for visualizations in our paper
-            elif arch == "vit_base" and patch_size == 16:
-                url = "dino_vitbase16_pretrain/dino_vitbase16_pretrain.pth"
-            elif arch == "vit_base" and patch_size == 8:
-                url = "dino_vitbase8_pretrain/dino_vitbase8_pretrain.pth"
-            elif arch == "resnet50":
-                url = "dino_resnet50_pretrain/dino_resnet50_pretrain.pth"
-            if url is not None:
-                print(
-                    "Since no pretrained weights have been provided, we load the reference pretrained DINO weights."
-                )
-                state_dict = torch.hub.load_state_dict_from_url(
-                    url="https://dl.fbaipublicfiles.com/dino/" + url
-                )
-                strict_loading = False if "resnet" in arch else True
-                msg = model.load_state_dict(state_dict, strict=strict_loading)
-                print(
-                    "Pretrained weights found at {} and loaded with msg: {}".format(
-                        url, msg
-                    )
-                )
-            else:
-                print(
-                    "There is no reference weights available for this model => We use random weights."
-                )
+            print(
+                "There is no reference weights available for this model => We use random weights."
+            )
 
     # If ResNet or VGG16 loose the last fully connected layer
     if "resnet" in arch:

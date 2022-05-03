@@ -38,49 +38,52 @@ class ImageDataset:
     def load_image(self, *args, **kwargs):
         return skimage.io.imread(self.image_path)
 
+
 class Dataset:
-    def __init__(self, dataset_name, dataset_set, remove_hards):
+    def __init__(self, dataset_path, remove_hards):
         """
         Build the dataloader
         """
 
-        self.dataset_name = dataset_name
-        self.set = dataset_set
+        # self.dataset_name = dataset_path
+        self.dataset_name = dataset_path.split('/')[-1]
+        self.dataset_path = dataset_path
 
-        if dataset_name == "VOC07":
-            self.root_path = "datasets/VOC2007"
+        if "VOC07" in dataset_path:
+            self.set = 'trainval'
             self.year = "2007"
-        elif dataset_name == "VOC12":
-            self.root_path = "datasets/VOC2012"
+        elif "VOC12" in dataset_path:
+            self.set = 'trainval'
             self.year = "2012"
-        elif dataset_name == "COCO20k":
+        elif "coco" in dataset_path:
+            self.set = 'train'
             self.year = "2014"
-            self.root_path = f"datasets/COCO/images/{dataset_set}{self.year}"
-            self.sel20k = 'datasets/coco_20k_filenames.txt'
+            self.root_path = f"{self.dataset_path}/images/train2014"
+            self.sel20k = f"{self.dataset_path}/coco_20k_filenames.txt"
             # JSON file constructed based on COCO train2014 gt 
-            self.all_annfile = "datasets/COCO/annotations/instances_train2014.json"
-            self.annfile = "datasets/instances_train2014_sel20k.json"
+            # self.all_annfile = "datasets/COCO/annotations/instances_train2014.json"
+            self.all_annfile = f"{self.dataset_path}/annotations/instances_train2014.json"
+            self.annfile = f"{self.dataset_path}/instances_train2014_sel20k.json"
             if not os.path.exists(self.annfile):
-                select_coco_20k(self.sel20k, self.all_annfile)
+                select_coco_20k(self.sel20k, self.all_annfile, self.dataset_path)
         else:
             raise ValueError("Unknown dataset.")
 
-        if not os.path.exists(self.root_path):
-            print(self.root_path)
+        if not os.path.exists(self.dataset_path):
             raise ValueError("Please follow the README to setup the datasets.")
 
         self.name = f"{self.dataset_name}_{self.set}"
 
         # Build the dataloader
-        if "VOC" in dataset_name:
+        if "VOC" in dataset_path:
             self.dataloader = torchvision.datasets.VOCDetection(
-                self.root_path,
+                self.dataset_path,
                 year=self.year,
                 image_set=self.set,
                 transform=transform,
                 download=False,
             )
-        elif "COCO20k" == dataset_name:
+        elif "COCO20k" == dataset_path:
             self.dataloader = torchvision.datasets.CocoDetection(
                 self.root_path, annFile=self.annfile, transform=transform
             )
@@ -100,7 +103,7 @@ class Dataset:
         Load the image corresponding to the im_name
         """
         if "VOC" in self.dataset_name:
-            image = skimage.io.imread(f"/datasets_local/VOC{self.year}/JPEGImages/{im_name}")
+            image = skimage.io.imread(f"{self.dataset_path}/VOCdevkit/VOC2007/JPEGImages/{im_name}")
         elif "COCO" in self.dataset_name:
             im_path = self.path_20k[self.sel_20k.index(im_name)]
             image = skimage.io.imread(f"/datasets_local/COCO/images/{im_path}")
@@ -320,7 +323,8 @@ def bbox_iou(box1, box2, x1y1x2y2=True, GIoU=False, DIoU=False, CIoU=False, eps=
     else:
         return iou  # IoU
 
-def select_coco_20k(sel_file, all_annotations_file):
+
+def select_coco_20k(sel_file, all_annotations_file, dataset_path):
     print('Building COCO 20k dataset.')
 
     # load all annotations
@@ -347,7 +351,6 @@ def select_coco_20k(sel_file, all_annotations_file):
     train2014_20k["annotations"] = new_anno
     train2014_20k["categories"] = train2014["categories"]
 
-    with open("datasets/instances_train2014_sel20k.json", "w") as outfile:
+    with open(f"{dataset_path}/instances_train2014_sel20k.json", "w") as outfile:
         json.dump(train2014_20k, outfile)
-
     print('Done.')
